@@ -11,10 +11,20 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class CareerApiService {
-  private apiUrl = localStorage.getItem('fc-career-hub.apiUrl') || 'http://127.0.0.1:3333';
+  private readonly productionApiUrl = 'https://fifa-bff.vercel.app';
+  private apiUrl = this.resolveApiUrl();
   private syncKey = localStorage.getItem('fc-career-hub.syncKey') || 'dev-secret';
 
   constructor(private readonly zone: NgZone) {}
+
+  private resolveApiUrl() {
+    const stored = localStorage.getItem('fc-career-hub.apiUrl');
+    if (!stored || /localhost|127\.0\.0\.1/i.test(stored)) {
+      localStorage.setItem('fc-career-hub.apiUrl', this.productionApiUrl);
+      return this.productionApiUrl;
+    }
+    return stored.replace(/\/$/, '');
+  }
 
   private ipc<T>(operation: () => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {

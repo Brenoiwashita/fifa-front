@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { APP_MOCK } from './mocks/app.mock';
 import {
   Career,
   CareerSnapshot,
@@ -26,12 +25,13 @@ interface NavItem { key: ViewKey; label: string; icon: string; badge?: string; }
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
-  active: ViewKey = 'dashboard';
+  active: ViewKey = 'careers';
   search = '';
-  readonly mock = APP_MOCK;
+  readonly appVersion = '0.3.0';
+  readonly gameName = 'EA SPORTS FC 26';
 
-  aiPrompt = APP_MOCK.ai.defaultPrompt;
-  fcPath = APP_MOCK.app.defaultFcPath;
+  aiPrompt = 'Atualize os elencos do Brasileirão';
+  fcPath = '';
   apiUrl = '';
   syncKey = '';
 
@@ -42,7 +42,7 @@ export class AppComponent implements OnInit {
   publishing = false;
   publishProgress = 0;
   publishError = '';
-  lastSync = APP_MOCK.publish.lastSync;
+  lastSync = 'Nunca';
   aiRunning = false;
   aiDone = false;
 
@@ -63,7 +63,6 @@ export class AppComponent implements OnInit {
   parsedCareer: ParsedCareerSave | null = null;
   parseLoading = false;
   parseError = '';
-  localDataSource = 'Nenhum save carregado';
 
   sections: { title?: string; items: NavItem[] }[] = [
     { items: [{ key: 'dashboard', label: 'Dashboard', icon: '▦' }] },
@@ -75,7 +74,7 @@ export class AppComponent implements OnInit {
       { key: 'stats', label: 'Estatísticas', icon: '⌁' },
     ] },
     { title: 'FC 26', items: [
-      { key: 'database', label: 'Database', icon: '◫', badge: APP_MOCK.app.databaseBadge },
+      { key: 'database', label: 'Database', icon: '◫' },
       { key: 'ai', label: 'Atualizar com IA', icon: '✦', badge: 'IA' },
       { key: 'mods', label: 'Mods', icon: '⬡' },
     ] },
@@ -131,7 +130,55 @@ export class AppComponent implements OnInit {
   get squadValue() {
     // O backend ainda devolve value formatado por jogador. Quando vier valor numérico do parser,
     // este cálculo poderá ser real sem alterar o template.
-    return APP_MOCK.squadSummary.value;
+    return this.players.length ? '—' : '—';
+  }
+
+  get squadFormation(): Player[][] {
+    const squad = this.activeCareer
+      ? this.players.filter((player) => !player.team || this.sameClub(player.team, this.activeCareer!.club))
+      : this.players;
+
+    const source = squad.length >= 11 ? squad : this.players;
+    const used = new Set<number>();
+
+    const take = (positions: string[], count: number): Player[] => {
+      const result = source
+        .filter((player) => !used.has(player.id) && positions.includes((player.pos || '').toUpperCase()))
+        .sort((a, b) => b.ovr - a.ovr)
+        .slice(0, count);
+      result.forEach((player) => used.add(player.id));
+      return result;
+    };
+
+    const fill = (line: Player[], count: number): Player[] => {
+      if (line.length >= count) return line;
+      const remaining = source
+        .filter((player) => !used.has(player.id))
+        .sort((a, b) => b.ovr - a.ovr)
+        .slice(0, count - line.length);
+      remaining.forEach((player) => used.add(player.id));
+      return [...line, ...remaining];
+    };
+
+    const attack = fill(take(['LW', 'RW', 'LM', 'RM', 'ST', 'CF'], 3), 3);
+    const midfield = fill(take(['CAM', 'CM', 'CDM', 'LM', 'RM'], 3), 3);
+    const defense = fill(take(['LB', 'LWB', 'CB', 'RB', 'RWB'], 4), 4);
+    const goalkeeper = fill(take(['GK'], 1), 1);
+
+    return [attack, midfield, defense, goalkeeper].filter((line) => line.length);
+  }
+
+  get activeCompetitionName() {
+    return this.standings.length ? 'Competição atual' : 'Sem competição sincronizada';
+  }
+
+  get databasePlayers() { return this.players.length; }
+  get databaseClubs() { return new Set(this.players.map((player) => player.team).filter(Boolean)).size; }
+  get databaseVersion() { return this.dashboard?.version || this.activeCareer?.version || '—'; }
+
+  private sameClub(team: string, club: string) {
+    const normalize = (value: string) => value.toLocaleLowerCase('pt-BR').replace(/\s+(fc|f\.c\.)$/i, '').trim();
+    return normalize(team) === normalize(club);
   }
 
   setView(view: ViewKey) {
@@ -411,7 +458,6 @@ export class AppComponent implements OnInit {
   private applyParsedCareer(parsed: ParsedCareerSave) {
     this.parsedCareer = parsed;
     this.apiError = '';
-    this.localDataSource = parsed.source === 'fixture' ? 'Save Demo' : `FC 26 / schema ${parsed.schemaVersion}`;
     const now = new Date().toISOString();
     const career: Career = {
       id: parsed.career.id,
