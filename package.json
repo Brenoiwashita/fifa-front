@@ -1,0 +1,61 @@
+{
+  "name": "fc-career-hub",
+  "version": "0.2.0",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "npm-run-all -p start:angular start:electron",
+    "start:angular": "ng serve --host 127.0.0.1 --port 4200",
+    "start:electron": "wait-on http://127.0.0.1:4200 && cross-env ELECTRON_RENDERER_URL=http://127.0.0.1:4200 electron electron/main.js",
+    "build:web": "ng build --configuration production",
+    "build": "npm run build:web && electron-builder --dir",
+    "dist": "npm run build:web && electron-builder",
+    "lint": "ng build --configuration development"
+  },
+  "dependencies": {
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@angular/router": "^20.0.0",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "^0.15.0",
+    "@angular/forms": "^20.0.0",
+    "fifa-career-save-parser": "^0.1.1"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "cross-env": "^7.0.3",
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12",
+    "npm-run-all": "^4.1.5",
+    "typescript": "~5.8.3",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.fccareerhub.desktop",
+    "productName": "FC Career Hub",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "fixtures/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "FC-Career-Hub-${version}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
